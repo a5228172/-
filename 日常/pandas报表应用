@@ -1,0 +1,230 @@
+import os
+import pandas as pd
+import time
+import openpyxl
+import sqlite3
+cc = time.localtime(time.time()-86400*15)[2]  #获取15天前的号数
+stmp0 = time.localtime()  #获取现在的时间
+stmp0 = time.strftime("%m")  #获取现在的月份
+# print(time.strftime("%A"))
+stmp1 = str(time.localtime(time.time()-86400)[1]) #获取现在的月份
+stmp2 = str(time.localtime(time.time()-86400)[2]) #获取今天的号数
+def jihuabiao(aaa): #解析计划报表
+	students = pd.read_excel(aaa) #读表
+	students = students.loc[students.拆单类型.apply(lambda a: a=="橱柜单")]  #筛选橱柜单
+	students8 = students.astype(str)  #将报表转为字符串格式
+	students9 = students.astype(str)
+	students9 = students9.loc[students9.审单交单时间.apply(lambda a: "202" in str(a))]\
+	.loc[students9.审单交单时间.apply(lambda a: stmp1 in str(a)[5:7] and stmp2 in str(a)[7:10])]
+	# print(students9.审单交单时间)
+	students9.审单交单时间 = pd.to_datetime(students9.审单交单时间)
+	students9.sort_values(by='审单交单时间',inplace=True,ascending=False)
+	# students9 = students.astype(str)
+	# students2 = students.loc[students.审单交单时间.apply(lambda a: stmp1 in a[4:7])]
+	if students9.shape[0] !=0:
+		print(str(students9.审单交单时间.values[0])[11:19])
+	students.柜身分单时间 = pd.to_datetime(students.柜身分单时间)
+	for i in students.index: #students.index  总行数
+		if "2020" in str(students.柜身分单时间.at[i]):
+			students.柜身分单时间.at[i] = pd.Timestamp(str(students.柜身分单时间.at[i])[:10]) #修改单元格属性
+		if "2020" in str(students.审单交单时间.at[i]):
+			students.审单交单时间.at[i] = pd.Timestamp(str(students.审单交单时间.at[i]).split(' ')[0])
+	aa3 = dict(students.柜身下单员.value_counts())
+	students = students.astype(str)
+	students1 = students.loc[students.柜身分单时间.apply(lambda a: stmp1 in a[4:7])]
+	if students1.shape[0] !=0:
+		students1 = students.loc[students.柜身分单时间.apply(lambda a: int(stmp2)>= int(a[8:10]) )]
+	aa1 = dict(students1.柜身分单时间.value_counts())
+	students2 = students.loc[students.审单交单时间.apply(lambda a: stmp1 in a[4:7])]
+	# print(students.审单交单时间)
+	if students2.shape[0] !=0:
+		students2 = students2.loc[students2.审单交单时间.apply(lambda a: int(stmp2)>= int(a[8:10]) )]
+	aa2 = dict(students2.审单交单时间.value_counts())
+	# print(aa2)
+	students3 = students1.loc[students1.审单交单时间.apply(lambda a: a=='nan')]
+	# print(students2.shape[0])
+	aa3 = students3.shape[0]
+	# students2 = students2.apply(pd.to_datetime, errors='ignore')  #转为日期格式
+	students8 = students8.loc[students8.审单交单时间.apply(lambda a: stmp1 in a[4:7])]
+	# print(students.审单交单时间)
+	if students8.shape[0] !=0:
+		students8 = students8.loc[students8.审单交单时间.apply(lambda a: int(stmp2)>= int(a[8:10]) )]
+	students8 = students8.apply(pd.to_datetime, errors='ignore')
+	# print(students8.审单交单时间)
+	for i in students8.index:
+		if int(str(students8.审单交单时间.at[i])[8:10])-int(str(students8.柜身分单时间.at[i])[8:10])>4:
+			print(students8.订单号.at[i]+'****'+students8.柜身下单员.at[i])
+		# elif int(str(students8.审单交单时间.at[i])[8:10])-int(str(students8.柜身分单时间.at[i])[8:10])<0:
+		# 	print(int(str(students8.审单交单时间.at[i])[8:10])-int(str(students8.柜身分单时间.at[i])[8:10]))
+		# print(1)
+	return aa1,aa2,aa3
+
+w1 = r"\\10.2.208.22\办公室数据\计划报表\2020\\"+stmp0+ "月份计划报表.xlsx"
+w2 = r"\\10.2.208.22\办公室数据\计划报表\2020\\"+str(int(stmp0)-1)+ "月份计划报表.xlsx"
+a1,a2,a3 = jihuabiao(w1)
+a21,a22,a23 = jihuabiao(w2)
+# print(a22)
+students = pd.read_excel(r'C:\Users\Administrator\Documents\我的数据源\橱柜生管拆单审图信息.xlsx')
+students1 = students.loc[students.源头责任人.apply(lambda a: a=="钟承勋" or a=="李日辉" )]
+students2 = students.loc[students.源头责任人.apply(lambda a: a!="钟承勋" and a!="李日辉" )]
+for i in students1.index:
+	if "2020" in str(students1.录入时间.at[i]):
+		students1.录入时间.at[i] = pd.Timestamp(str(students1.录入时间.at[i])[:10])
+for i in students2.index:
+	if "2020" in str(students2.录入时间.at[i]):
+		students2.录入时间.at[i] = pd.Timestamp(str(students2.录入时间.at[i])[:10])
+a4 = dict(students1.录入时间.value_counts())   # 审图生管问题
+a5 = dict(students2.录入时间.value_counts())	# 拆单生管问题
+students = pd.read_excel(r'C:\Users\Administrator\Documents\我的数据源\车间问题.xlsx')
+for i in students.index:
+	if "(A" in students.源头责任人员.at[i]:
+		students.源头责任人员.at[i] = students.源头责任人员.at[i][:-9]
+	if "(A" in str(students.间接责任人员1.at[i]):
+		students.间接责任人员1.at[i] = students.间接责任人员1.at[i][:-9]
+	if "(A" in str(students.间接责任人员2.at[i]):
+		students.间接责任人员2.at[i] = students.间接责任人员2.at[i][:-9]
+students = students.drop_duplicates(subset=['分单号'], keep='first')   #删除某一列
+for i in students.index:
+	students.补板时间.at[i] = pd.Timestamp(str(students.补板时间.at[i]).replace("   "," ")[:10])
+
+if "钟承勋" in str(students.源头责任人员) or "李日辉" in str(students.源头责任人员):
+	students1 = students.loc[students.源头责任人.apply(lambda a: a=="钟承勋" or a=="李日辉" )]
+	for i in students1.index:
+		if "2020" in str(students1.录入时间.at[i]):
+			students1.录入时间.at[i] = pd.Timestamp(str(students1.录入时间.at[i])[:10])
+	students2 = students.loc[students.源头责任人.apply(lambda a: a!="钟承勋" or a!="李日辉" )]
+	for i in students2.index:
+		if "2020" in str(students2.录入时间.at[i]):
+			students2.录入时间.at[i] = pd.Timestamp(str(students2.录入时间.at[i])[:10])
+	a6 = dict(students1.补板时间.value_counts())	# 审图车间问题
+	a7 = dict(students2.补板时间.value_counts())	# 拆单车间问题  students2.补板时间.value_counts()统计单列数据
+else:
+	a6 = {}
+	a7 = dict(students.补板时间.value_counts())	# 拆单车间问题
+
+
+a11= {}
+# print(a1)
+def qwe(q,w,e):
+	for   key, value in q.items():
+		
+		if "2020" in str(key):
+			key = str(key)
+			# print(type(key))
+			if w in key[5:7] and e in key[7:10] :
+				a10.append(int(value))
+				# print(str(key)[5:-9] +"  "+ str(value))
+				break
+	else:
+		a10.append(0)
+students = pd.read_excel(r'\\192.168.7.10\sharedata\Aiegle-2\Office\生管部\橱柜生管部\工作文件\2020年橱柜客诉简化.xlsx','2020年')
+
+# print(students.责任人)
+students1 = students.loc[students.责任人.apply(lambda a: "钟承勋" in str(a) or "李日辉" in str(a))]
+for i in students1.index:
+	if "2020" in str(students1.录入时间1.at[i]):
+		students1.录入时间1.at[i] = pd.Timestamp(str(students1.录入时间1.at[i])[:10])
+students2 = students.loc[students.责任人.apply(lambda a: "钟承勋" not in str(a)  or "李日辉" not  in str(a) )]
+for i in students2.index:
+	if "2020" in str(students2.录入时间1.at[i]):
+		# print(str(students2.录入时间1.at[i]))
+		students2.录入时间1.at[i] = pd.Timestamp(str(students2.录入时间1.at[i])[:10])
+a8 = dict(students1.录入时间1.value_counts())	# 审图车间问题
+a9 = dict(students2.录入时间1.value_counts())	# 拆单车间问题
+# print(a8)
+# students = students.loc[students.录入时间1.apply(lambda a: "2020" in str(a))]
+# print(students.责任人)
+for i  in range(1,32):
+	a10 = []
+	if len(str(i)) ==1:
+		i = '0'+str(i)
+	else:
+		i = str(i)
+	qwe(a1,stmp0,i)
+	qwe(a2,stmp0,i)
+	qwe(a4,stmp0,i)
+	qwe(a5,stmp0,i)
+	qwe(a6,stmp0,i)
+	qwe(a7,stmp0,i)
+	qwe(a8,stmp0,i)
+	qwe(a9,stmp0,i)
+	qwe(a21,stmp0,i)
+	qwe(a22,stmp0,i)
+	a10[0] = a10[0]+a10[-2]
+	a10[1] = a10[1]+a10[-1]
+	del a10[-1]
+	del a10[-1]
+	# print(a10)
+	a11[i] = a10
+# print(sum(list(a1.values()))-sum(list(a2.values()))+sum(list(a21.values()))-sum(list(a22.values())))
+students = pd.DataFrame(a11)
+# students = students.set_index(aa)#“设置ID为第一层”
+students.to_excel(r'C:\Users\Administrator\Desktop\新建文件夹 (3)\123.xlsx')
+books  = openpyxl.load_workbook(r'\\192.168.7.10\sharedata\Aiegle-2\Office\生管部\橱柜生管部\工作文件\黄涛\橱柜生管日报表 - 模板.xlsx')
+# print(books.sheetnames)
+sheet0 = books['产能、交期日报表']
+sheet1 = books['准确率日报表']
+aa= sum(list(a1.values()))-sum(list(a2.values()))+sum(list(a21.values()))-sum(list(a22.values()))
+a1 = []
+a1.append(stmp2)
+if sheet0.cell(16,int(stmp2)+3).value == 0:
+	a1.append(str(int(stmp2)-1))
+# print(sheet0.cell(17,22+4).value)   #获取单元格的值  sheet0.cell(17,22+4).value
+for stmp in a1:
+	stmp = str(stmp)
+	if len(stmp)  == 1:
+		stmp = "0" + stmp
+	# print(stmp)
+	# print(a11[stmp])
+	if sheet0.cell(17,int(stmp)+4).value !=0:
+		sheet0.cell(16,int(stmp)+4).value = a11[stmp][0]
+		sheet0.cell(17,int(stmp)+4).value = a11[stmp][1]
+		sheet1.cell(7,int(stmp)+4).value = a11[stmp][2]
+		sheet1.cell(16,int(stmp)+4).value = a11[stmp][3]
+		sheet1.cell(8,int(stmp)+4).value = a11[stmp][4]
+		sheet1.cell(17,int(stmp)+4).value = a11[stmp][5]
+		sheet1.cell(9,int(stmp)+4).value = a11[stmp][6]
+		sheet1.cell(18,int(stmp)+4).value = a11[stmp][7]
+	# print(a11[stmp2][1])
+if sheet0.cell(14,5).value ==0:
+	sheet0.cell(14,5).value =aa
+books.save(r'\\192.168.7.10\sharedata\Aiegle-2\Office\生管部\橱柜生管部\工作文件\黄涛\橱柜生管日报表 - 模板.xlsx')
+# elif sheet0.cell(18,int(stmp2)-1).value != a3+a23:
+# 	print('期初数错误')
+print(a3+a23)
+s = [['是的mm','sd',"1.2"]]
+def init_db(dbpath):
+    sql = '''
+        create table jijin
+        (id integer primary key autoincrement,
+        dama text,
+        mingcheng text,
+        jingzhi text)
+    '''  #创建数据表
+    conn = sqlite3.connect(dbpath)
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
+    conn.close()
+def saveData2DB(datalist,dbpath):
+	init_db(dbpath)
+
+	conn = sqlite3.connect(dbpath)
+	cur = conn.cursor()
+	cursor = cur.execute("SELECT id from jijin")
+	print(list(cursor))
+	for data in datalist:
+		# print(data)
+		data = ','.join(data)
+	    # for index in range(len(data)):
+		sql=	f'''
+				insert into jijin
+				(dama,mingcheng,jingzhi)
+				values({data})
+				'''
+		# print(sql)
+		# print(','.join(data))
+		conn.commit()
+		cur.close()
+		conn.close()
+# saveData2DB(s,'test.db')
